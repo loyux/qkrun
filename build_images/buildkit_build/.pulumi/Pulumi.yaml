@@ -1,0 +1,6 @@
+name: crossbuild
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+description: use it to cross build

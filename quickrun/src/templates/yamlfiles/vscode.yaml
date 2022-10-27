@@ -1,0 +1,79 @@
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: vscode-{generate_str}
+  namespace: default
+  labels:
+    app: vscode-{generate_str}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vscode-{generate_str}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: vscode-{generate_str}
+    spec:
+      containers:
+        - name: container-{codegen}
+          image: 
+          ports:
+            - name: http-0
+              containerPort: 8022
+              protocol: TCP
+          resources:
+            limits:
+              cpu: {cpu_nums}
+              memory: {memory_m}Mi
+            requests:
+              cpu: 1000m
+              memory: 1024Mi
+          volumeMounts:
+            - name: localgene
+              mountPath: /config
+          livenessProbe:
+            tcpSocket:
+              port: 8022
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+            runAsNonRoot: false
+            allowPrivilegeEscalation: true
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      serviceAccountName: default
+      serviceAccount: default
+      schedulerName: default-scheduler
+  volumeClaimTemplates:
+    - kind: PersistentVolumeClaim
+      apiVersion: v1
+      metadata:
+        name: localgene
+        namespace: default
+        creationTimestamp: null
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: local
+        volumeMode: Filesystem
+      status:
+        phase: Pending
+  serviceName: vscode-{generate_str}-pcwx
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0
+  revisionHistoryLimit: 10

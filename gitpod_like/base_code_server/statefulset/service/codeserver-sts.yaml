@@ -1,0 +1,79 @@
+#statefulset 并创建随机pv pvc
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: StatefulSet
+metadata:
+  name: rust
+spec:
+  serviceName: "rustdev"
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Delete #Retain
+    whenScaled: Delete
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rust
+  template:
+    metadata:
+      labels:
+        app: rust
+    spec:
+      containers:
+      - name: rust
+        image: registry.cn-hangzhou.aliyuncs.com/clouddevs/code-server-vscode:latest
+        # image: registry.cn-hangzhou.aliyuncs.com/clouddevs/code-server-with-rust:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PASSWORD
+          value: litong
+        - name: SUDO_PASSWORD
+          value: litong
+        - name: DEFAULT_WORKSPACE
+          value: /config/workspace
+        - name: PUID
+          value: "0"
+        - name: PGID
+          value: "0"
+        - name: HOME
+          value: /config
+        #挂载点注意，连接vscode-client，默认配置文件在 /root/.vscode-server
+        ports:
+        - containerPort: 8443
+          name: code-server
+        - containerPort: 8022
+          name: ssh-port
+        volumeMounts:
+        - name: www
+          mountPath: /config
+        volumeMounts:
+        - name: www
+          mountPath: /config
+      dnsPolicy: ClusterFirst
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service4rust
+spec:
+  type: NodePort
+  selector:
+    app: rust
+  ports:
+      # 默认情况下，为了方便起见，`targetPort` 被设置为与 `port` 字段相同的值。
+    - port: 8022
+      targetPort: 8022
+      name: ssh-port
+      # 可选字段
+      # 默认情况下，为了方便起见，Kubernetes 控制平面会从某个范围内分配一个端口号（默认：30000-32767）
+      nodePort: 30000
+    - port: 8443
+      name: code-server
+      targetPort: 8443
+      nodePort: 30443

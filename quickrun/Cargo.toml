@@ -1,0 +1,51 @@
+[package]
+name = "quickrun"
+version = "0.1.0"
+edition = "2021"
+authors = ["loyu loyurs@163.com"]
+description = "A tools used to create resoures quickly"
+license = "Apache-2.0"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+exclude = ["src"]
+[dependencies]
+#数据库应用
+# sled = "0.34.7"
+#模板文件
+tinytemplate = "1.2.1"
+anyhow = "1.0.57"
+clap = { version = "3.1.18", features = ["derive"] }
+tokio = { version = "1.19.2", features = [
+    "rt-multi-thread",
+    "macros",
+    "process",
+] }
+serde = "1.0.137"
+tracing-subscriber = "0.3.11"
+tracing = "0.1.35"
+base64 = "0.13.0"
+serde_json = "1.0.81"
+k8s-openapi = { version = "0.15", features = ["v1_23"] }
+kube = { version = "0.74.0", features = ["runtime", "derive"] }
+serde_yaml = "0.8.24"
+openssl-sys = "0.9"
+openssl = { version = "0.10.33", features = ["vendored"] }
+rand = "0.8.5"
+sled = "0.34.7"
+bollard = "0.13.0"
+futures = "0.3.25"
+
+
+
+[[example]]
+name = "demo1"
+path = "examples/demo1.rs"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+lto = true
+codegen-units = 1
+strip = true
+

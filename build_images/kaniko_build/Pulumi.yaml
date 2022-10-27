@@ -1,0 +1,6 @@
+name: build_kaniko
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+description: use kaniko to build images

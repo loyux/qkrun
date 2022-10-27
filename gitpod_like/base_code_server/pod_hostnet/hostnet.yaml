@@ -1,0 +1,84 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: rust-pv
+  labels:
+    type: local
+spec:
+  storageClassName: rust-pv-config
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: "/mnt/rust/rust-config"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rust-pvc-config
+spec:
+  storageClassName: rust-pv-config
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: StatefulSet
+metadata:
+  name: rust
+spec:
+  serviceName: "rustdev"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rust
+  # strategy:
+  #   type: Recreate
+  template:
+    metadata:
+      labels:
+        app: rust
+    spec:
+      containers:
+      - name: rust
+        image: registry.cn-hangzhou.aliyuncs.com/clouddevs/code-server-vscode:latest
+        # image: registry.cn-hangzhou.aliyuncs.com/clouddevs/code-server-with-rust:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PASSWORD
+          value: li
+        - name: SUDO_PASSWORD
+          value: li
+        - name: DEFAULT_WORKSPACE
+          value: /config/workspace
+        - name: PUID
+          value: "0"
+        - name: PGID
+          value: "0"
+        - name: HOME
+          value: /config
+        #挂载点注意，连接vscode-client，默认配置文件在 /root/.vscode-server
+        ports:
+        - containerPort: 8443
+          name: code-server
+        - containerPort: 8022
+          name: ssh-port
+        volumeMounts:
+        - name: rust-config
+          mountPath: /config
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: true
+      hostNetwork: true
+      nodeName: 192.168.1.82
+      volumes:
+      - name: rust-root
+        persistentVolumeClaim:
+          claimName: rust-pvc-root
+      volumes:
+      - name: rust-config
+        persistentVolumeClaim:
+          claimName: rust-pvc-config

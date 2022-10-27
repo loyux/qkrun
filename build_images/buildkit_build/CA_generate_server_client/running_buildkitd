@@ -1,0 +1,8 @@
+buildkitd
+buildkitd --addr tcp://0.0.0.0:1234 --tlscacert ca.cert --tlscert server.cert --tlskey server.key
+
+
+
+
+buildctl
+buildctl --addr tcp://localhost:1234  --tlscacert ca.cert   --tlscert client.cert   --tlskey client.key build -frontend gateway.v0 --opt source=docker/dockerfile --opt context=https://github.com/loyurs/qkrun.git#master:docker/rust_code_server/ --output type=image,name=docker.io/liloyu/yuxin520:vk

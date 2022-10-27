@@ -1,0 +1,2 @@
+mod vscode_extension_for_rust;
+pub use vscode_extension_for_rust::rust_extensions_install;
