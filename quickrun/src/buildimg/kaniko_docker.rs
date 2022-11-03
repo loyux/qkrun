@@ -90,7 +90,7 @@ pub struct KanikoBuildInfo {
     git_url: &'static str,
     git_subfolde: &'static str,
     dest_image: &'static str,
-    docker_registry: Image_Registry<&str>,
+    docker_registry: Image_Registry<&'static str>,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -100,8 +100,12 @@ pub struct Image_Registry<T> {
     registry_url: T,
 }
 
-impl Image_Registry<T: Into<String>> {
-    fn new(user: &str, password: &str, registry_url: &str) -> Self {
+impl<T> Image_Registry<T> {
+    fn new(
+        user: &'static str,
+        password: &'static str,
+        registry_url: &'static str,
+    ) -> Image_Registry<&'static str> {
         Image_Registry {
             user,
             password,
@@ -118,7 +122,7 @@ impl KanikoBuildInfo {
         git_url: &'static str,
         git_subfolde: &'static str,
         dest_image: &'static str,
-        docker_registry: Image_Registry<String>,
+        docker_registry: Image_Registry<&'static str>,
     ) -> Self {
         KanikoBuildInfo {
             kaniko_image,
@@ -145,7 +149,7 @@ impl KanikoBuildInfo {
             "--destination",
             &self.dest_image,
         ];
-        let registry: Image_Registry<String> = self.docker_registry;
+        let registry: Image_Registry<&str> = self.docker_registry;
         generaste_base64_secret(&registry.user, &registry.password, &registry.registry_url);
         let dockerrun = RunDocker::default();
         dockerrun
