@@ -1,0 +1,12 @@
+build_message:
+  container_name: demo1
+  kaniko_image: ubuntu:20.04 #构建基础镜像名字
+  workspace_map: config #构建地址
+  config_json_map: /temp/config.json #docker-registr生成的配置文件地址   /temp/config.json
+  git_url: git://github.com/loyurs/qkrun.git#refs/heads/master #要构建的镜像git地址git://github.com/loyurs/qkrun.git#refs/heads/master
+  git_subfolder: build_images/dockerfiles/tda/Dockerfile #子文件夹  形如：dockerfiles/test/";
+  dest_image: ccr.ccs.tencentyun.com/tctd/yuxin:love1 #ccr.ccs.tencentyun.com/tctd/yuxin:love
+registry:
+  user: asdsad
+  password: asdss
+  registry_url: ccr.ccs.tencentyun.com

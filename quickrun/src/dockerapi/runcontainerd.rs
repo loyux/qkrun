@@ -230,6 +230,7 @@ impl RunDocker {
         };
         let options = Some(CreateContainerOptions {
             name: container_name,
+            // ..Default::default()
         });
         docker.create_container(options, config).await?;
         let start_options = Some(StartContainerOptions {

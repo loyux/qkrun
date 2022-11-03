@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{fs, io::BufReader, path::PathBuf};
 
 #[warn(unused)]
 use clap::{Parser, Subcommand};
@@ -27,7 +27,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    KanikoBuild {},
+    KanikoBuild {
+        #[clap(long)]
+        config_path: PathBuf,
+    },
 
     ///start a docker container with ssh ubuntu:20.04 && devenv
     Docker {
@@ -93,6 +96,7 @@ enum Commands {
     },
 }
 use anyhow::Error;
+use serde_yaml::Value;
 
 use crate::{
     dockerapi,
@@ -108,7 +112,7 @@ use crate::{
 pub async fn cli_run() -> Result<(), Error> {
     let cli = Cli::parse();
     match &cli.command {
-        Commands::KanikoBuild {} => {}
+        Commands::KanikoBuild { config_path } => {}
         Commands::Docker { container_name } => {
             let cnd = dockerapi::runcontainerd::Cond::
             new("https://raw.githubusercontent.com/loyurs/qkrun/master/build_images/dockerfiles/ubuntu20_ssh/Dockerfile".into(),  
