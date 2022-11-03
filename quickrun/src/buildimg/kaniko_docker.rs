@@ -90,7 +90,26 @@ pub struct KanikoBuildInfo {
     git_url: &'static str,
     git_subfolde: &'static str,
     dest_image: &'static str,
+    docker_registry: Image_Registry<&str>,
 }
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Image_Registry<T> {
+    user: T,
+    password: T,
+    registry_url: T,
+}
+
+impl Image_Registry<T: Into<String>> {
+    fn new(user: &str, password: &str, registry_url: &str) -> Self {
+        Image_Registry {
+            user,
+            password,
+            registry_url,
+        }
+    }
+}
+
 impl KanikoBuildInfo {
     pub fn new(
         kaniko_image: &'static str,
@@ -99,6 +118,7 @@ impl KanikoBuildInfo {
         git_url: &'static str,
         git_subfolde: &'static str,
         dest_image: &'static str,
+        docker_registry: Image_Registry<String>,
     ) -> Self {
         KanikoBuildInfo {
             kaniko_image,
@@ -107,10 +127,14 @@ impl KanikoBuildInfo {
             git_url,
             git_subfolde,
             dest_image,
+            docker_registry,
         }
     }
     ///启动一个docker容器运行并开始根据提供的dockerfile 构造镜像
-    pub async fn kaniko_start_build(&self) -> Result<(), anyhow::Error> {
+    pub async fn kaniko_start_build<T: Into<String>>(
+        &self,
+        container_name: &str,
+    ) -> Result<(), anyhow::Error> {
         let start_cmd = vec![
             "--context",
             &self.git_url,
@@ -121,17 +145,14 @@ impl KanikoBuildInfo {
             "--destination",
             &self.dest_image,
         ];
-        generaste_base64_secret(
-            "100016367772",
-            "docker_registry_password",
-            "ccr.ccs.tencentyun.com",
-        );
+        let registry: Image_Registry<String> = self.docker_registry;
+        generaste_base64_secret(&registry.user, &registry.password, &registry.registry_url);
         let dockerrun = RunDocker::default();
         dockerrun
             .docker_run_with_volume_mount(
                 "/kaniko/.docker/config.json",
                 "/home/config.json",
-                "seven",
+                container_name,
                 KANIKO_IMAGE,
                 start_cmd,
             )
@@ -139,12 +160,14 @@ impl KanikoBuildInfo {
         Ok(())
     }
 }
+
+///build test
 pub async fn kaniko_start_build1() -> Result<(), anyhow::Error> {
     let start_cmd = vec![
         "--context",
         "git://github.com/loyurs/qkrun.git#refs/heads/master",
         "--context-sub-path",
-        "build_images/dockerfiles/tda/",
+        "build_images/dockerfiles/ubuntu20_ssh/Dockerfile",
         "--dockerfile",
         "Dockerfile",
         "--destination",

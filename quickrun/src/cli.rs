@@ -27,6 +27,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    KanikoBuild {},
+
     ///start a docker container with ssh ubuntu:20.04 && devenv
     Docker {
         #[clap(short = 'c')]
@@ -106,6 +108,7 @@ use crate::{
 pub async fn cli_run() -> Result<(), Error> {
     let cli = Cli::parse();
     match &cli.command {
+        Commands::KanikoBuild {} => {}
         Commands::Docker { container_name } => {
             let cnd = dockerapi::runcontainerd::Cond::
             new("https://raw.githubusercontent.com/loyurs/qkrun/master/build_images/dockerfiles/ubuntu20_ssh/Dockerfile".into(),  
