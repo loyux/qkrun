@@ -36,7 +36,8 @@ jobs:
           profile: minimal
           override: true
           target: ${{ matrix.target }}
-
+      - name: Env Build
+        run: apt-get update && export DEBIAN_FRONTEND=noninteractive && apt-get install -yq build-essential cmake curl file  graphviz musl-dev musl-tools libpq-dev libsqlite-dev libssl-dev linux-libc-dev pkgconf sudo unzip xutils-dev
       - name: Build binary
         run: cargo build --verbose --release --target ${{ matrix.target }}
         env:
@@ -52,7 +53,6 @@ jobs:
           mkdir archive
           cp LICENSE README.md archive/
           cd archive
-          apt-get update && export DEBIAN_FRONTEND=noninteractive && apt-get install -yq build-essential cmake curl file  graphviz musl-dev musl-tools libpq-dev libsqlite-dev libssl-dev linux-libc-dev pkgconf sudo unzip xutils-dev
           if [ "${{ matrix.build }}" = "windows" ]; then
             cp "../target/${{ matrix.target }}/release/sgf-render.exe" ./
             7z a "${{ matrix.archive-name }}" LICENSE README.md sgf-render.exe
