@@ -41,7 +41,7 @@ jobs:
         with:
           brew: hello yq
           brew-cask: MacVim
-          apt: yq build-essential cmake curl file  graphviz musl-dev musl-tools libpq-dev libsqlite-dev libssl-dev linux-libc-dev pkgconf sudo unzip xutils-dev
+          apt: build-essential cmake curl file  graphviz musl-dev musl-tools libpq-dev libsqlite-dev libssl-dev linux-libc-dev pkgconf sudo unzip xutils-dev
           choco: graphviz less
       - name: Build binary
         run: cargo build --verbose --release --target ${{ matrix.target }}
