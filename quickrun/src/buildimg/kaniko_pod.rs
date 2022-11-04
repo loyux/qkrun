@@ -1,12 +1,13 @@
-use std::{io::BufReader, path::PathBuf};
-
-use serde_yaml::Value;
-use tracing::info;
+use std::{fs, io::BufReader, path::PathBuf};
 
 use crate::{
     buildimg::kaniko_docker::KanikoBuildInfo,
     dockerapi::{self, runcontainerd::RunDocker},
+    templates::models::{self, new_docker_registry, new_kaniko_build},
 };
+use anyhow::Error;
+use serde_yaml::Value;
+use tracing::info;
 
 use super::kaniko_docker::Image_Registry;
 
@@ -41,7 +42,6 @@ async fn kaniko_build_image() {
     let git_subfolder = "dockerfiles/test/";
     let dest_image = "ccr.ccs.tencentyun.com/tctd/yuxin:love";
     // dockerapi::runcontainerd::Cond::new(git_url, image_name, containerd_name, port, cmd);
-
     //通过api启动docker run类似命令
     let dockerrun = RunDocker::default();
     dockerrun
@@ -52,51 +52,58 @@ async fn kaniko_build_image() {
             IMAGE,
             vec!["sleep", "3600"],
         )
-        .await;
+        .await
+        .unwrap();
 }
 
-///use kaniko to build with config_file.yaml
-/// ```
-/// build_message:
-///     kaniko_image: love #构建基础镜像名字
-///     workspace_map: config #构建地址
-///     config_json_map: sadas #docker-registr生成的配置文件地址   /temp/config.json
-///     git_url: asjdjasjdj #要构建的镜像git地址git://github.com/loyurs/qkrun.git#refs/heads/master
-///     git_subfolder: sadsad #子文件夹  形如：dockerfiles/test/
-///     dest_image: asdasda #ccr.ccs.tencentyun.com/tctd/yuxin:love
-/// registry:
-///     user: asdsad
-///     password: asdss
-///     registry_url: assdss
-/// ```
-async fn kaniko_build_image_with_config_file(config_path: PathBuf) -> Result<(), anyhow::Error> {
-    let reader_yaml = std::fs::File::open(config_path).unwrap();
-    let mut reader = BufReader::new(reader_yaml);
-    let conf: Value = serde_yaml::from_reader(reader).unwrap();
-    // let conf = config_val.clone();
-    let mut retval = String::new();
+///从配置文件->执行通过kubernetes pod进行镜像构造
+pub async fn kaniko_pod_get_config_from_path(paths: PathBuf) -> Result<(String, String), Error> {
+    //获取配置文件信息
+    let file = fs::File::open(paths)?;
+    let mut reader = BufReader::new(file);
+    let conf: Value = serde_yaml::from_reader(reader)?;
+    dbg!(&conf);
     let value_get = |x: &'static str, y: &'static str| -> &str {
         conf.get(x).unwrap().get(y).unwrap().as_str().unwrap()
     };
-    let registry_docker = || -> Image_Registry<String> {
-        Image_Registry {
-            user: value_get("registry", "user").to_string(),
-            password: value_get("registry", "user").to_string(),
-            registry_url: value_get("registry", "user").to_string(),
-        }
-    };
-    let kaniko_build_info = KanikoBuildInfo::new(
-        value_get("build_message", "kaniko_image").to_string(),
-        value_get("build_message", "workspace_map").to_string(),
-        value_get("build_message", "config_json_map").to_string(),
-        value_get("build_message", "git_url").to_string(),
-        value_get("build_message", "git_subfolder").to_string(),
-        value_get("build_message", "dest_image").to_string(),
-        registry_docker(),
+    let registry_configmap = new_docker_registry(
+        value_get("registry", "user"),
+        value_get("registry", "password"),
+        value_get("registry", "url").to_string(),
+        models::DOCKER_REGISTRY,
+        value_get("build_message", "configmap_name").to_string(),
+        value_get("build_message", "namespace").to_string(),
     );
-    kaniko_build_info
-        .kaniko_start_build("container_name")
-        .await?;
-    info!("start the container successful");
+    // println!("{}", registry_configmap);
+    let build_yaml = new_kaniko_build(
+        models::KANIKO_BUILD,
+        value_get("build_message", "name").to_string(),
+        value_get("build_message", "git").to_string(),
+        value_get("build_message", "subpath").to_string(),
+        value_get("build_message", "image_name").to_string(),
+        value_get("build_message", "configmap_name").to_string(),
+        value_get("build_message", "namespace").to_string(),
+    );
+    // println!("{}", build_yaml);
+    Ok((registry_configmap, build_yaml))
+}
+
+///生成kaniko_pod 运行配置模板文件
+pub fn kaniko_pod_config_template_generate(paths: &PathBuf) -> Result<(), anyhow::Error> {
+    let yaml_temp = format!(
+        "{}",
+        r#"  build_message:
+    image_name: String #镜像名字
+    name: String #pod名字
+    git: String #git content链接
+    subpath: String #git子目录
+    configmap_name: sdsad #用户挂载push secret的configmap
+    namespace: sad
+  registry:
+    user: String
+    password: String
+    url: String"#
+    );
+    fs::write(paths, &yaml_temp)?;
     Ok(())
 }

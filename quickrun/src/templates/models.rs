@@ -362,19 +362,19 @@ pub fn new_docker_registry(
     password: &str,
     api_url: String,
     template: &str,
-    cm_name: String,
-    ns: String,
+    configmap_name: String,
+    namespace: String,
 ) -> String {
     info!(
         "namespace:{}, configmap_name: {} should be the same with mounted pod",
-        ns, cm_name
+        namespace, configmap_name
     );
     let based64 = based64go(user, password);
     let docker_registry = DockerRegistry {
         based64,
         api_url,
-        ns,
-        cm_name,
+        cm_name: configmap_name,
+        ns: namespace,
     };
     let mut tt = TinyTemplate::new();
     tt.add_template("docker_registry", template).unwrap();

@@ -79,7 +79,7 @@ impl Cond {
     }
 
     async fn build_create_and_run(&self) -> Result<()> {
-        buildimg::usebuildkit::git2build(&self.docker_build_url, &self.image_name);
+        buildimg::docker_run_buildkit::git2build(&self.docker_build_url, &self.image_name);
         self.run_devlang_env().await?;
         Ok(())
     }

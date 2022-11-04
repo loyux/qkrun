@@ -1,8 +1,14 @@
+//利用docker的api进行构建, 运行kaniko容器并进行构建
+
 use bollard::container::Config;
 use bollard::container::CreateContainerOptions;
 use bollard::container::StartContainerOptions;
 use serde_json::json;
+use serde_yaml::Value;
 use std::collections::HashMap;
+use std::fs;
+use std::io::BufReader;
+use std::io::BufWriter;
 use std::path::PathBuf;
 use std::process::Command;
 use std::process::Stdio;
@@ -170,6 +176,54 @@ impl KanikoBuildInfo {
     }
 }
 
+///从path config中解析数据并执行kaniko docker 构建
+///use kaniko to build with config_file.yaml
+/// ```
+/// build_message:
+///     kaniko_image: love #构建基础镜像名字
+///     workspace_map: config #构建地址
+///     config_json_map: sadas #docker-registr生成的配置文件地址   /temp/config.json
+///     git_url: asjdjasjdj #要构建的镜像git地址git://github.com/loyurs/qkrun.git#refs/heads/master
+///     git_subfolder: sadsad #子文件夹  形如：dockerfiles/test/
+///     dest_image: asdasda #ccr.ccs.tencentyun.com/tctd/yuxin:love
+/// registry:
+///     user: asdsad
+///     password: asdss
+///     registry_url: assdss
+/// ```
+pub async fn kaniko_docker_build_image_with_config_file(
+    config_path: PathBuf,
+) -> Result<(), anyhow::Error> {
+    let reader_yaml = std::fs::File::open(config_path).unwrap();
+    let mut reader = BufReader::new(reader_yaml);
+    let conf: Value = serde_yaml::from_reader(reader).unwrap();
+    let mut retval = String::new();
+    let value_get = |x: &'static str, y: &'static str| -> &str {
+        conf.get(x).unwrap().get(y).unwrap().as_str().unwrap()
+    };
+    let registry_docker = || -> Image_Registry<String> {
+        Image_Registry {
+            user: value_get("registry", "user").to_string(),
+            password: value_get("registry", "password").to_string(),
+            registry_url: value_get("registry", "registry_url").to_string(),
+        }
+    };
+    let kaniko_build_info = KanikoBuildInfo::new(
+        value_get("build_message", "kaniko_image").to_string(),
+        value_get("build_message", "workspace_map").to_string(),
+        value_get("build_message", "config_json_map").to_string(),
+        value_get("build_message", "git_url").to_string(),
+        value_get("build_message", "git_subfolder").to_string(),
+        value_get("build_message", "dest_image").to_string(),
+        registry_docker(),
+    );
+    kaniko_build_info
+        .kaniko_start_build(value_get("build_message", "container_name"))
+        .await?;
+    info!("start the container successful");
+    Ok(())
+}
+
 ///build test
 pub async fn kaniko_start_build1_test() -> Result<(), anyhow::Error> {
     let start_cmd = vec![
@@ -221,3 +275,28 @@ async fn test_build_and_push() {
 // INFO[0003] CMD /bin/bash
 // INFO[0003] Pushing image to ccr.ccs.tencentyun.com/tctd/yuxin:lov11
 // INFO[0006] Pushed ccr.ccs.tencentyun.com/tctd/yuxin@sha256:202d42335a14facb325901259743f4d6794e11557f9ccf4b9b60785e739b8e37
+
+pub fn kaniko_docker_config_template_generate(paths: &PathBuf) -> Result<(), anyhow::Error> {
+    let yaml_temp = format!(
+        "{}",
+        r#"  build_message:
+    container_name: demo1   #启动的docker镜像名字
+    kaniko_image: ubuntu:20.04 #构建基础镜像名字
+    workspace_map: config #构建地址
+    config_json_map: /temp/config.json #docker-registr生成的配置文件地址，push镜像需要将其挂载到kaniko容器内 /temp/config.json
+    git_url: git://github.com/loyurs/qkrun.git#refs/heads/master #要构建的镜像git地址git://github.com/loyurs/qkrun.git#refs/heads/master
+    git_subfolder: build_images/dockerfiles/tda/Dockerfile #子文件夹  形如：dockerfiles/test/";
+    dest_image: ccr.ccs.tencentyun.com/tctd/yuxin:love1 #ccr.ccs.tencentyun.com/tctd/yuxin:love
+  registry: #docker镜像仓库地址，用户名和密码
+    user: demo #100016367772
+    password: *****
+    registry_url: ccr.ccs.tencentyun.com
+"#
+    );
+    fs::write(paths, &yaml_temp)?;
+    Ok(())
+}
+#[test]
+fn kaniko_docker_config_template_generate_test() {
+    kaniko_docker_config_template_generate(&PathBuf::from("sad.yaml")).unwrap();
+}

@@ -1,0 +1,12 @@
+build_message:
+  container_name: demo1   #启动的docker镜像名字
+  kaniko_image: ubuntu:20.04 #构建基础镜像名字
+  workspace_map: config #构建地址
+  config_json_map: /temp/config.json #registr生成的配置文件地址，push镜像需要将其挂载到kaniko容器内 
+  git_url: git://github.com/loyurs/qkrun.git#refs/heads/master #要构建的镜像git地址
+  git_subfolder: build_images/dockerfiles/tda/Dockerfile #子文件夹形如：dockerfiles/test/";
+  dest_image: ccr.ccs.tencentyun.com/tctd/yuxin:lo
+registry: #docker镜像仓库地址用户名和密码
+  user: demo
+  password: *****
+  registry_url: ccr.ccs.tencentyun.com

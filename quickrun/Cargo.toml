@@ -1,6 +1,6 @@
 [package]
 name = "quickrun"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["loyu loyurs@163.com"]
 description = "A tools used to create resoures quickly"
@@ -35,7 +35,6 @@ bollard = "0.13.0"
 futures = "0.3.25"
 
 
-
 [[example]]
 name = "demo1"
 path = "examples/demo1.rs"
@@ -48,4 +47,3 @@ panic = "abort"
 lto = true
 codegen-units = 1
 strip = true
-
