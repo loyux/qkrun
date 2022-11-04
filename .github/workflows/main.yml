@@ -56,14 +56,14 @@ jobs:
         shell: bash
         run: |
           mkdir archive
-          cp LICENSE README.md archive/
+          cp  README.md archive/
           cd archive
           if [ "${{ matrix.build }}" = "windows" ]; then
             cp "../target/${{ matrix.target }}/release/quickrun.exe" ./
-            7z a "${{ matrix.archive-name }}" LICENSE README.md quickrun.exe
+            7z a "${{ matrix.archive-name }}"  README.md quickrun.exe
           else
             cp "../target/${{ matrix.target }}/release/quickrun" ./
-            tar -czf "${{ matrix.archive-name }}" LICENSE README.md quickrun
+            tar -czf "${{ matrix.archive-name }}"  README.md quickrun
           fi
       - name: Upload archive
         uses: actions/upload-artifact@v1

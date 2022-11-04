@@ -11,7 +11,7 @@ use bollard::{
     volume::CreateVolumeOptions,
     Docker,
 };
-use futures::{future, StreamExt, TryStreamExt};
+use futures::TryStreamExt;
 use std::{collections::HashMap, io::Read, time::Duration};
 use tracing::{info, warn};
 
