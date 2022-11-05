@@ -62,7 +62,7 @@ pub async fn kaniko_pod_get_config_from_path(paths: PathBuf) -> Result<(String, 
     let file = fs::File::open(paths)?;
     let mut reader = BufReader::new(file);
     let conf: Value = serde_yaml::from_reader(reader)?;
-    dbg!(&conf);
+    // dbg!(&conf);
     let value_get = |x: &'static str, y: &'static str| -> &str {
         conf.get(x).unwrap().get(y).unwrap().as_str().unwrap()
     };

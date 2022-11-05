@@ -2,12 +2,6 @@
 1. 利用容器、kubernetes、linux快速构建远程开发环境
 2. 自动生成构建极简配置文件
 
-
-![quickRUN](images/quickRun.png "hey")
-## ENV
-```
-$HOME/.kube/config存在，try_default 将使用默认配置去连接kubernetes的api
-```
 ## cli用法
 ```yaml
 1 0.1.1
@@ -29,4 +23,13 @@ SUBCOMMANDS:
     plugins          vscode-client remotessh install tools<vscode>
     quick            start a statefulset container quickly<kubernetes>
     start            start a statefulset <kubernetes>
+```
+
+
+
+
+![quickRUN](images/quickRun.png "hey")
+## ENV
+```
+$HOME/.kube/config存在，try_default 将使用默认配置去连接kubernetes的api
 ```

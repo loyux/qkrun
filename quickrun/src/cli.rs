@@ -48,7 +48,9 @@ enum Commands {
     },
     /// 构建镜像,或生成配置模板<kubernetes>
     KanikoPod {
+        #[clap(value_parser, long)]
         config_path: Option<PathBuf>,
+        #[clap(value_parser, long)]
         generate: Option<PathBuf>,
     },
     ///start a statefulset <kubernetes>
@@ -122,12 +124,12 @@ pub async fn cli_run() -> Result<(), Error> {
                         .unwrap();
                 }
                 None => {
-                    error!("Please use -h get help")
+                    warn!("Please use -h get help")
                 }
             }
             if let Some(a) = generate {
                 kaniko_docker_config_template_generate(a).unwrap();
-                warn!("generate config file successful");
+                info!("generate config file successful");
             }
         }
 
@@ -192,7 +194,7 @@ pub async fn cli_run() -> Result<(), Error> {
                     apply_delete("create", &d.1).await?;
                 }
                 None => {
-                    error!("Please input the config path")
+                    warn!("Please input the config path")
                 }
             }
             if let Some(p) = generate {
