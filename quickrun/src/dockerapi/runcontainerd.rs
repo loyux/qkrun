@@ -278,6 +278,7 @@ impl RunDocker {
         while let Some(Ok(msg)) = output_stream.next().await {
             print!("{}", msg);
         }
+
         Ok(())
     }
 

@@ -82,6 +82,12 @@ pub fn generaste_base64_secret(
     // println!("{}", pp);
 }
 
+pub fn delete_base64_secret(file_path: &PathBuf) -> Result<(), anyhow::Error> {
+    fs::remove_file(file_path)?;
+    info!("Remove file {:?} successful", file_path);
+    Ok(())
+}
+
 ///利用本地dockerfile进行构建
 pub fn build_with_local_dockerfile(input_str: &str) {
     let echo_child = Command::new("echo")
@@ -259,7 +265,7 @@ impl KanikoBuildInfo {
                 }),
             )
             .await?;
-
+        delete_base64_secret(&self.config_json_map.to_owned().into());
         Ok(())
     }
 
