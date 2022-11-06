@@ -1,17 +1,18 @@
 //利用bollard api 启动容器，构建容器，并在容器启动后注入后执行命令(一次性命令，非守护进程)
 //
 //
-
 use anyhow::Result;
 use bollard::{
-    container::{Config, CreateContainerOptions, StartContainerOptions},
+    container::{Config, CreateContainerOptions, LogsOptions, StartContainerOptions},
     exec::{CreateExecOptions, StartExecOptions},
-    image::BuildImageOptions,
+    image::{BuildImageOptions, CreateImageOptions},
     service::{HostConfig, Mount, MountTypeEnum},
     volume::CreateVolumeOptions,
     Docker,
 };
-use futures::TryStreamExt;
+// use futures::TryStreamExt;
+use futures_util::stream::StreamExt;
+use futures_util::TryStreamExt;
 use std::{collections::HashMap, io::Read, time::Duration};
 use tracing::{info, warn};
 
@@ -195,6 +196,8 @@ mod test_build {
     }
 }
 
+const KANIKO_IMAGE: &str = "registry.cn-hangzhou.aliyuncs.com/clouddevs/kanico:latest";
+
 //可以挂载文件，可以绑定挂载点
 #[derive(Default)]
 pub struct RunDocker {}
@@ -206,10 +209,23 @@ impl RunDocker {
         &self,
         target_container_mount_point: &str,
         source_host_mount_point: &str,
-        container_name: &str,
         image_name: &str,
         start_cmd: Vec<&str>,
     ) -> Result<(), anyhow::Error> {
+        //拉取镜像
+        let docker = bollard::Docker::connect_with_socket_defaults()?;
+        docker
+            .create_image(
+                Some(CreateImageOptions {
+                    from_image: KANIKO_IMAGE,
+                    ..Default::default()
+                }),
+                None,
+                None,
+            )
+            .try_collect::<Vec<_>>()
+            .await?;
+
         let mount_opt = Mount {
             target: Some(target_container_mount_point.to_string()),
             source: Some(source_host_mount_point.to_string()),
@@ -218,9 +234,10 @@ impl RunDocker {
         };
         let hostcfg = HostConfig {
             mounts: Some(vec![mount_opt]),
+            auto_remove: Some(true),
             ..Default::default()
         };
-        let docker = bollard::Docker::connect_with_socket_defaults()?;
+
         let config: Config<&str> = Config {
             image: Some(image_name),
             // cmd: Some(create_cmd),
@@ -228,20 +245,42 @@ impl RunDocker {
             cmd: Some(start_cmd),
             ..Default::default()
         };
-        let options = Some(CreateContainerOptions {
-            name: container_name,
-            // ..Default::default()
-        });
-        docker.create_container(options, config).await?;
+        // let options = Some(CreateContainerOptions {
+        //     name: container_name,
+        //     // ..Default::default()
+        // });
+
+        ///```
+        /// 对于泛型，使用过程中无法推断的类型需要显式的声明，形如
+        /// fn woha<T,P>(a:T,b:p) {
+        /// }
+        /// woha:<&str,&str>(a,b);
+        ///
+        /// ```
+        let docker_id = docker
+            .create_container::<&str, &str>(None, config)
+            .await?
+            .id;
         let start_options = Some(StartContainerOptions {
             detach_keys: "ctrl-^",
         });
         //启动容器，并附带启动参数
-        docker
-            .start_container(container_name, start_options)
-            .await?;
+        docker.start_container::<&str>(&docker_id, None).await?;
+        info!("Start container {} successful", &docker_id);
+        let listlog_opt: LogsOptions<&str> = LogsOptions {
+            follow: true,
+            stdout: true,
+            stderr: true,
+            timestamps: false,
+            ..Default::default()
+        };
+        let mut output_stream = docker.logs(&docker_id, Some(listlog_opt));
+        while let Some(Ok(msg)) = output_stream.next().await {
+            print!("{}", msg);
+        }
         Ok(())
     }
+
     pub async fn docker_run_with_created_volume(
         &self,
         volume_name: &str,

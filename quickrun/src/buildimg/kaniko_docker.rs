@@ -1,8 +1,20 @@
 //利用docker的api进行构建, 运行kaniko容器并进行构建
 
+use crate::dockerapi::runcontainerd::RunDocker;
 use bollard::container::Config;
 use bollard::container::CreateContainerOptions;
+use bollard::container::LogsOptions;
+use bollard::container::RemoveContainerOptions;
 use bollard::container::StartContainerOptions;
+use bollard::exec::CreateExecOptions;
+use bollard::exec::StartExecResults;
+use bollard::image::CreateImageOptions;
+use bollard::service::HostConfig;
+use bollard::Docker;
+use futures::Stream;
+// use futures::TryStreamExt;
+use futures_util::stream::StreamExt;
+use futures_util::TryStreamExt;
 use serde_json::json;
 use serde_yaml::Value;
 use std::collections::HashMap;
@@ -13,9 +25,8 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::process::Stdio;
 use tracing::info;
-
-use crate::dockerapi::runcontainerd::RunDocker;
 const KANIKO_IMAGE: &str = "registry.cn-hangzhou.aliyuncs.com/clouddevs/kanico:latest";
+
 ///use kaniko to build with git
 /// 利用git及其子目录进行构建，docker
 // pub fn build_kaniko() {
@@ -143,8 +154,117 @@ impl KanikoBuildInfo {
             docker_registry,
         }
     }
+
+    // pull镜像,利用create 来pull 基础构造镜像
+    pub async fn autopull(&self) -> Result<(), anyhow::Error> {
+        let docker = Docker::connect_with_socket_defaults().unwrap();
+        //此项将会将镜像拉取下来
+        docker
+            .create_image(
+                Some(CreateImageOptions {
+                    from_image: KANIKO_IMAGE,
+                    ..Default::default()
+                }),
+                None,
+                None,
+            )
+            .try_collect::<Vec<_>>()
+            .await?;
+
+        // let hostconfig = HostConfig {
+        //     auto_remove: Some(false),
+        //     ..Default::default()
+        // };
+        let alpine_config = Config {
+            image: Some(KANIKO_IMAGE),
+            tty: Some(true),
+            // host_config: Some(hostconfig),
+            ..Default::default()
+        };
+
+        let id = docker
+            .create_container::<&str, &str>(None, alpine_config)
+            .await?
+            .id;
+        docker.start_container::<String>(&id, None).await?;
+        // non interactive
+        let start_cmd = vec![
+            "--context",
+            &self.git_url,
+            "--context-sub-path",
+            &self.git_subfolde,
+            "--dockerfile",
+            "Dockerfile",
+            "--destination",
+            &self.dest_image,
+        ];
+        dbg!(&start_cmd);
+        let registry: &Image_Registry<String> = &self.docker_registry;
+        generaste_base64_secret(
+            &registry.user,
+            &registry.password,
+            &registry.registry_url,
+            &self.config_json_map,
+        );
+        let dockerrun = RunDocker::default();
+        dockerrun
+            .docker_run_with_volume_mount(
+                "/kaniko/.docker/config.json",
+                self.config_json_map.as_str(),
+                KANIKO_IMAGE,
+                start_cmd,
+            )
+            .await?;
+
+        let listlog_opt: LogsOptions<&str> = LogsOptions {
+            follow: true,
+            stdout: true,
+            stderr: true,
+            timestamps: true,
+            ..Default::default()
+        };
+
+        let mut output_stream = docker.logs(&id, Some(listlog_opt));
+        while let Some(Ok(msg)) = output_stream.next().await {
+            print!("{}", msg);
+        }
+        // let exec = docker
+        //     .create_exec(
+        //         &id,
+        //         CreateExecOptions {
+        //             attach_stdout: Some(true),
+        //             attach_stderr: Some(true),
+        //             cmd: Some(start_cmd),
+        //             ..Default::default()
+        //         },
+        //     )
+        //     .await?
+        //     .id;
+        // if let StartExecResults::Attached { mut output, .. } =
+        // docker.start_exec(&exec, None).await?
+        // {
+        //     while let Some(Ok(msg)) = output.next().await {
+        //         print!("{}", msg);
+        //     }
+        // } else {
+        //     unreachable!();
+        // }
+
+        docker
+            .remove_container(
+                &id,
+                Some(RemoveContainerOptions {
+                    force: true,
+                    ..Default::default()
+                }),
+            )
+            .await?;
+
+        Ok(())
+    }
+
     ///启动一个docker容器运行并开始根据提供的dockerfile 构造镜像
-    pub async fn kaniko_start_build(&self, container_name: &str) -> Result<(), anyhow::Error> {
+    pub async fn kaniko_start_build(&self) -> Result<(), anyhow::Error> {
         let start_cmd = vec![
             "--context",
             &self.git_url,
@@ -167,7 +287,6 @@ impl KanikoBuildInfo {
             .docker_run_with_volume_mount(
                 "/kaniko/.docker/config.json",
                 self.config_json_map.as_str(),
-                container_name,
                 KANIKO_IMAGE,
                 start_cmd,
             )
@@ -217,10 +336,8 @@ pub async fn kaniko_docker_build_image_with_config_file(
         value_get("build_message", "dest_image").to_string(),
         registry_docker(),
     );
-    kaniko_build_info
-        .kaniko_start_build(value_get("build_message", "container_name"))
-        .await?;
-    info!("start the container successful");
+    kaniko_build_info.kaniko_start_build().await?;
+    info!("complete");
     Ok(())
 }
 
@@ -247,7 +364,7 @@ pub async fn kaniko_start_build1_test() -> Result<(), anyhow::Error> {
         .docker_run_with_volume_mount(
             "/kaniko/.docker/config.json",
             "/home/config.json",
-            "seven",
+            // "seven",
             KANIKO_IMAGE,
             start_cmd,
         )
@@ -280,10 +397,9 @@ pub fn kaniko_docker_config_template_generate(paths: &PathBuf) -> Result<(), any
     let yaml_temp = format!(
         "{}",
         r#"  build_message:
-    container_name: demo1   #启动的docker镜像名字
     kaniko_image: ubuntu:20.04 #构建基础镜像名字
     workspace_map: config #构建地址
-    config_json_map: /temp/config.json #docker-registr生成的配置文件地址，push镜像需要将其挂载到kaniko容器内 /temp/config.json
+    config_json_map: /tmp/config.json #docker-registr生成的配置文件地址，push镜像需要将其挂载到kaniko容器内 /temp/config.json
     git_url: git://github.com/loyurs/qkrun.git#refs/heads/master #要构建的镜像git地址git://github.com/loyurs/qkrun.git#refs/heads/master
     git_subfolder: build_images/dockerfiles/tda/Dockerfile #子文件夹  形如：dockerfiles/test/";
     dest_image: ccr.ccs.tencentyun.com/tctd/yuxin:love1 #ccr.ccs.tencentyun.com/tctd/yuxin:love

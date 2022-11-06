@@ -1143,6 +1143,7 @@ dependencies = [
  "bollard",
  "clap",
  "futures",
+ "futures-util",
  "k8s-openapi",
  "kube",
  "openssl",

@@ -31,7 +31,7 @@ enum Commands {
     KanikoDocker {
         ///读取位置配置文件，构建镜像
         #[clap(long)]
-        config_path: Option<PathBuf>,
+        config: Option<PathBuf>,
         ///指定位置生成模板配置文件
         #[clap(long)]
         generate: Option<PathBuf>,
@@ -49,7 +49,7 @@ enum Commands {
     /// 构建镜像,或生成配置模板<kubernetes>
     KanikoPod {
         #[clap(value_parser, long)]
-        config_path: Option<PathBuf>,
+        config: Option<PathBuf>,
         #[clap(value_parser, long)]
         generate: Option<PathBuf>,
     },
@@ -113,11 +113,8 @@ use crate::{
 pub async fn cli_run() -> Result<(), Error> {
     let cli = Cli::parse();
     match &cli.command {
-        Commands::KanikoDocker {
-            config_path,
-            generate,
-        } => {
-            match config_path {
+        Commands::KanikoDocker { config, generate } => {
+            match config {
                 Some(k) => {
                     kaniko_docker_build_image_with_config_file(k.to_path_buf())
                         .await
@@ -179,13 +176,10 @@ pub async fn cli_run() -> Result<(), Error> {
                 apply_delete("delete", &yaml).await?;
             }
         }
-        Commands::KanikoPod {
-            config_path,
-            generate,
-        } => {
+        Commands::KanikoPod { config, generate } => {
             //创建一个configmap
             // cargo run  build --git git://github.com/loyurs/qkrun.git#refs/heads/master --subpath build_images/dockerfiles/vscode_server_only/ --registry-api ccr.ccs.tencentyun.com --image-name ccr.ccs.tencentyun.com/tctd/k888:latest --passwd-registry  --user-registry 100016367772 --name kaka
-            match config_path {
+            match config {
                 Some(k) => {
                     let d = kaniko_pod::kaniko_pod_get_config_from_path(k.to_path_buf())
                         .await

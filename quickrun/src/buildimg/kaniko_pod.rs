@@ -49,7 +49,7 @@ async fn kaniko_build_image() {
             "/root",
             "/vdb/containerd/",
             "seven",
-            IMAGE,
+            // IMAGE,
             vec!["sleep", "3600"],
         )
         .await
