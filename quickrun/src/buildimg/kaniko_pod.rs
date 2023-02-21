@@ -1,15 +1,11 @@
 use std::{fs, io::BufReader, path::PathBuf};
 
 use crate::{
-    buildimg::kaniko_docker::KanikoBuildInfo,
-    dockerapi::{self, runcontainerd::RunDocker},
+    dockerapi::runcontainerd::RunDocker,
     templates::models::{self, new_docker_registry, new_kaniko_build},
 };
 use anyhow::Error;
 use serde_yaml::Value;
-use tracing::info;
-
-use super::kaniko_docker::Image_Registry;
 
 //利用Kaniko进行构建容器
 //kaniko在docker中构建

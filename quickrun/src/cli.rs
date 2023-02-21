@@ -14,17 +14,6 @@ struct Cli {
     command: Commands,
 }
 
-// #[derive(Subcommand)]
-// enum DevLang {
-//     Rust,
-//     Go,
-//     Java,
-//     Python,
-//     C,
-//     Cpp,
-//     Javascript,
-// }
-
 #[derive(Subcommand)]
 enum Commands {
     ///构建镜像,或生成配置模板<docker>
@@ -88,10 +77,30 @@ enum Commands {
         #[clap(value_parser, long, short = 'd')]
         delete: Option<String>,
     },
+    ResourceQuota {
+        #[clap(value_parser, long = "cr")]
+        ///namespace cpu request
+        cpu_cores_req: String,
+        #[clap(value_parser, long = "mr")]
+        ///namespace memory request <Mb>
+        memory_req: String,
+        #[clap(value_parser, long = "cl")]
+        ///namespace cpu limit
+        cpu_cores_limit: String,
+        #[clap(value_parser, long = "ml")]
+        ///namespace memory limits <Mb>
+        memory_limit: String,
+
+        #[clap(value_parser, long, short = 'r')]
+        resource_quota_name: String,
+        #[clap(value_parser, long, short = 'n')]
+        namespace: String,
+        #[clap(value_parser, long, short = 'd')]
+        delete: bool,
+    },
 }
 use anyhow::Error;
-use serde_yaml::Value;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 use crate::{
     buildimg::{
@@ -103,8 +112,8 @@ use crate::{
     dockerapi,
     k8sapi::apply_delete,
     templates::models::{
-        self, new_docker_registry, new_kaniko_build, new_statefulset_codeserver,
-        new_vscode_server_pod,
+        self, new_docker_registry, new_kaniko_build, new_namespace_resourcequota,
+        new_statefulset_codeserver, new_vscode_server_pod,
     },
     tools,
 };
@@ -113,6 +122,30 @@ use crate::{
 pub async fn cli_run() -> Result<(), Error> {
     let cli = Cli::parse();
     match &cli.command {
+        Commands::ResourceQuota {
+            cpu_cores_req,
+            memory_req,
+            cpu_cores_limit,
+            memory_limit,
+            resource_quota_name,
+            namespace,
+            delete
+        } => {
+            let ns_res = new_namespace_resourcequota(
+                &resource_quota_name,
+                (memory_req, memory_limit),
+                (cpu_cores_req, cpu_cores_limit),
+                namespace,
+            )
+            .unwrap();
+            // apply_delete("crea", yaml)
+
+            if delete == &false {
+                apply_delete("create", &ns_res).await?;
+            } else {
+                apply_delete("delete", &ns_res).await?;
+            }
+        }
         Commands::KanikoDocker { config, generate } => {
             match config {
                 Some(k) => {

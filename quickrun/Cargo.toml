@@ -29,8 +29,8 @@ kube = { version = "0.74.0", features = ["runtime", "derive"] }
 serde_yaml = "0.8.24"
 openssl-sys = "0.9"
 openssl = { version = "0.10.33", features = ["vendored"] }
-rand = "0.8.5"
-sled = "0.34.7"
+# rand = "0.8.5"
+# sled = "0.34.7"
 bollard = "0.13.0"
 futures = "0.3.25"
 futures-util = "0.3.25"

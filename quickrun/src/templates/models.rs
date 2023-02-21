@@ -3,7 +3,7 @@ use serde::Serialize;
 use tinytemplate::TinyTemplate;
 use tracing::info;
 
-use crate::{genstring, k8sapi::apply_delete};
+use crate::k8sapi::apply_delete;
 
 ///配置模板文件参数
 #[derive(Serialize, Default)]
@@ -110,18 +110,6 @@ pub fn new_vscode(vscodett: VscodeTt) -> String {
     let mut tt = TinyTemplate::new();
     tt.add_template("vscode", VSCODE).unwrap();
     tt.render("vscode", &vscodett).unwrap()
-}
-
-#[tokio::test]
-async fn test_new_vscode() {
-    let vscodett = VscodeTt {
-        generate_str: genstring(),
-        codegen: genstring(),
-        cpu_nums: "2000Mi".to_string(),
-        memory_m: 1024.to_string(),
-    };
-    let td = new_vscode(vscodett);
-    apply_delete("create", &td).await.unwrap();
 }
 
 pub static VSCODE_SERVER_POD: &str = r#"kind: PersistentVolume
@@ -531,5 +519,56 @@ pub fn new_statefulset_codeserver(
     let mut tt = TinyTemplate::new();
     tt.add_template("sts", STATEFULSET_POD)?;
     let yaml = tt.render("sts", &sts)?;
+
     Ok(yaml)
+}
+
+static RESOURCEQUOTA: &str = r#"apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {rs_quota_name}
+  namespace: {namespace}
+spec:
+  hard:
+    requests.cpu: "{req_cpu}"
+    requests.memory: {req_mem}M
+    limits.cpu: "{limit_cpu}"
+    limits.memory: {limit_mem}M"#;
+
+#[derive(serde::Serialize)]
+pub struct ResourecQuota<T> {
+    rs_quota_name: T,
+    namespace: T,
+    req_mem: T,
+    req_cpu: T,
+    limit_mem: T,
+    limit_cpu: T,
+}
+
+///创建namespace资源限制
+///memory ("1000","2000") cpu_core ("0.5","1.5")
+pub fn new_namespace_resourcequota(
+    rs_quota_name: &str,
+    memory: (&str, &str),
+    cpu_core: (&str, &str),
+    namespace: &str,
+) -> Result<String, anyhow::Error> {
+    let mut tt = TinyTemplate::new();
+    let resource_quota = ResourecQuota {
+        rs_quota_name,
+        namespace,
+        req_cpu: cpu_core.0,
+        req_mem: memory.0,
+        limit_cpu: cpu_core.1,
+        limit_mem: memory.1,
+    };
+    tt.add_template("res_quota", RESOURCEQUOTA)?;
+    let yaml = tt.render("res_quota", &resource_quota)?;
+    Ok(yaml)
+}
+
+#[test]
+fn new_namespace_resourcequota_test() {
+    let td = new_namespace_resourcequota("kaka", ("100", "1000"), ("0.5", "1.8"), "hello").unwrap();
+    println!("{td}");
 }

@@ -5,9 +5,7 @@ use bollard::exec::{CreateExecOptions, StartExecResults};
 use bollard::image::CreateImageOptions;
 use futures_util::stream::StreamExt;
 use futures_util::TryStreamExt;
-
 const IMAGE: &str = "registry.cn-hangzhou.aliyuncs.com/clouddevs/kanico:latest";
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let docker = Docker::connect_with_socket_defaults().unwrap();

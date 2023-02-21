@@ -7,10 +7,8 @@
 1 0.1.1
 loyu loyurs@163.com
 make a containerd vscode-server
-
 USAGE:
     quickrun <SUBCOMMAND>
-
 OPTIONS:
     -h, --help       Print help information
     -V, --version    Print version information
@@ -24,12 +22,23 @@ SUBCOMMANDS:
     quick            start a statefulset container quickly<kubernetes>
     start            start a statefulset <kubernetes>
 ```
-
-
-
-
-![quickRUN](images/quickRun.png "hey")
+<!-- ![quickRUN](images/quickRun.png "hey") -->
 ## ENV
 ```
 $HOME/.kube/config存在，try_default 将使用默认配置去连接kubernetes的api
+```
+
+## example
+```bash
+快速创建:
+qkrun start --pv d1pv --pvc d1pvc --volume /vdb/testpv/ --stsname apps --passwd admin
+volume使用hostpath，讲pod卷挂载到指定宿主机磁盘位置
+快速删除
+qkrun start --pv d1pv --pvc d1pvc --volume /vdb/testpv/ --stsname apps --passwd admin --delete true
+NAME        READY   STATUS    RESTARTS      AGE
+apps-0      1/1     Running   0             88s
+NAME   CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM           STORAGECLASS   REASON   AGE
+d1pv   20Gi       RWO            Retain           Bound    default/d1pvc   d1pv                    105s
+NAME    STATUS   VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+d1pvc   Bound    d1pv     20Gi       RWO            d1pv           2m3s
 ```
