@@ -1,6 +1,8 @@
 use clap::{arg, command, Arg, Command};
 
-pub async fn build_cli_run(myapi:MyApiForApplyDelete) {
+// pub async fn build_cli_run(myapi: MyApiForApplyDelete) {
+
+pub async fn build_cli_run() {
     let matches = command!() // requires `cargo` feature
         .propagate_version(true)
         .subcommand_required(true)
@@ -25,7 +27,7 @@ pub async fn build_cli_run(myapi:MyApiForApplyDelete) {
                         .arg(Arg::new("workld").short('w').help("sad")),)
                 )
         .subcommand(
-            Command::new("start")
+            Command::new("kube-start")
             .about("run pod or container quickly")
                 .subcommand_required(true)
                 .subcommand(
@@ -43,10 +45,28 @@ pub async fn build_cli_run(myapi:MyApiForApplyDelete) {
                             .about("start a ubuntu-server with ssh 8022 port")
                             .arg(arg!(--pd "helo")))
         )
+        .subcommand(Command::new("container").about("Run a container with docker or podman"))
+        .subcommand_required(true)
+        .subcommand(
+            Command::new("code-server")
+            .about("run a docker/podman code-server")
+            .arg(arg!(--name [NAME] "contaienr name"))
+            .arg(arg!(--volume [VOLUME] "container storage"))
+            .arg(arg!(--port [PORT] "container port"))
+        )
+        .subcommand(
+            Command::new("ubuntu2204ltsdev")
+            .about("run a docker/podman in")
+        )
+
+
         .get_matches();
     match matches.subcommand() {
-        Some(("start", sub_matches)) => match sub_matches.subcommand() {
+        Some(("kube-start", sub_matches)) => match sub_matches.subcommand() {
             Some(("code-server", sub_sub_matches)) => {
+                let client = Client::try_default().await.unwrap();
+                let discovery = Discovery::new(client.clone()).run().await.unwrap();
+                let myapi = MyApiForApplyDelete { client, discovery };
                 let k = new_vscode_server_pod(
                     &VSCODE_SERVER_POD,
                     sub_sub_matches.get_one::<String>("pv").unwrap(),
@@ -56,10 +76,19 @@ pub async fn build_cli_run(myapi:MyApiForApplyDelete) {
                     sub_sub_matches.get_one::<String>("password").unwrap(),
                 );
                 println!("{k}");
-                if sub_sub_matches.get_one::<String>("operate").unwrap().to_uppercase() ==  "CREATE".to_string() {
+                if sub_sub_matches
+                    .get_one::<String>("operate")
+                    .unwrap()
+                    .to_uppercase()
+                    == "CREATE".to_string()
+                {
                     myapi.apply(&k).await.unwrap();
-                }
-                else if sub_sub_matches.get_one::<String>("operate").unwrap().to_uppercase() ==  "DELETE".to_string() {
+                } else if sub_sub_matches
+                    .get_one::<String>("operate")
+                    .unwrap()
+                    .to_uppercase()
+                    == "DELETE".to_string()
+                {
                     myapi.delete_from_yaml(&k).await.unwrap();
                 } else {
                     panic!("Error, you shold define create or delete!");
@@ -92,6 +121,7 @@ pub async fn build_cli_run(myapi:MyApiForApplyDelete) {
     }
 }
 
+use kube::{Client, Discovery};
 use rand::distributions::Alphanumeric;
 ///创建随机数
 use rand::{thread_rng, Rng};

@@ -53,7 +53,7 @@ impl MyApiForApplyDelete {
             };
             let name = obj.name_any();
             if let Some((ar, caps)) = self.discovery.resolve_gvk(&gvk) {
-                let api = dynamic_api(ar, caps, self.client.clone(),&namespace , false);
+                let api = dynamic_api(ar, caps, self.client.clone(), &namespace, false);
                 trace!("Applying {}: \n{}", gvk.kind, serde_yaml::to_string(&obj)?);
                 let data: serde_json::Value = serde_json::to_value(&obj)?;
                 let _r = api.patch(&name, &ssapply, &Patch::Apply(data)).await?;
@@ -92,13 +92,7 @@ impl MyApiForApplyDelete {
         let (ar, caps) = self
             .resolve_api_resource(&self.discovery, &resource)
             .with_context(|| format!("resource {:?} not found in cluster", resource))?;
-        let api = dynamic_api_closure(
-            ar,
-            caps,
-            self.client.clone(),
-            &namespace,
-            false,
-        );
+        let api = dynamic_api_closure(ar, caps, self.client.clone(), &namespace, false);
         api.delete(&delete_name, &DeleteParams::default()).await?;
         info!(
             "Delete resource: {:?} successful, namespace: {:?}",
@@ -107,7 +101,6 @@ impl MyApiForApplyDelete {
         Ok(())
     }
 
-
     ///利用yaml文件进行删除
     pub async fn delete_from_yaml(&self, yaml: &str) -> Result<(), anyhow::Error> {
         for doc in multidoc_deserialize(yaml)? {
@@ -115,12 +108,7 @@ impl MyApiForApplyDelete {
             let resource = obj.clone().types.unwrap().kind;
             let namespace = obj.clone().namespace();
             let name = obj.meta().name.clone();
-            self.delete(
-                resource,
-                namespace,
-                name.unwrap(),
-            )
-            .await?;
+            self.delete(resource, namespace, name.unwrap()).await?;
         }
         Ok(())
     }

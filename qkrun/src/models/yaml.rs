@@ -1,11 +1,11 @@
 //启动一个vscode-web-server
-use crate::{k8sapply::apply_delete, cli::random_string};
+use crate::{cli::random_string, k8sapply::apply_delete};
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
 use tracing::info;
 ///配置模板文件参数
 #[derive(Serialize, Default)]
-pub struct VscodeServerPod<T:Into<String>> {
+pub struct VscodeServerPod<T: Into<String>> {
     ///pv卷名称
     pub pv_name: T,
     pub host_path: T,
@@ -212,7 +212,7 @@ spec:
       targetPort: 18443"#;
 
 ///为此模板进行实例化
-pub fn new_vscode_server_pod<T:Into<String> + Serialize>(
+pub fn new_vscode_server_pod<T: Into<String> + Serialize>(
     template: &str,
     pv_name: T,
     pvc_name: T,
